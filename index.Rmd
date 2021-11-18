@@ -1,0 +1,158 @@
+---
+title: "Ecrire aux député.e.s concerné.e.s par le loup"
+author: "Olivier Gimenez"
+date: "18/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## Motivation
+
+Il y a un débat sur le nombre de loups en France. Pour informer, j'ai rédigé une note (ou "policy brief") sur la méthode de comptage de loups. Je me suis dit pourquoi pas envoyer ces informations aux député.e.s concerné.e.s par le loup. J'entends par là les départements où le loup est présent. Pour ce faire, j'ai besoin d'une liste de noms des député.e.s avec leur emails, seulement pour les départements où le loup est présent. 
+
+## Pré-requis
+
+Quelques packages utiles. 
+```{r}
+library(tidyverse)
+theme_set(theme_light(base_size = 12))
+library(janitor)
+library(downloader)
+library(sf)
+```
+
+
+## Les députés
+
+Toutes les données sont sur le site https://data.assemblee-nationale.fr/acteurs/deputes-en-exercice, mais nécessitent un petit traitement pour créer une liste.
+
+Je suis paresseux, et je vais passer par le site https://www.voxpublic.org/ qui "met à la disposition des acteurs citoyens des savoir-faire dans leurs actions d’interpellation des décideurs publics". Leur section https://www.voxpublic.org/-Centre-de-ressources-.html est riche en informations précieuses. Il y a en particulier plusieurs annuaires partagés, dont un pour les députés. 
+
+On précise le chemin vers le fichier à télécharger.
+```{r}
+path <- "https://www.voxpublic.org/IMG/csv/fichier_deputes_commissions.csv"
+```
+
+On télécharge le fichier depuis le site voxpublic.org.  
+```{r}
+download(url = path, destfile = "dat/deputes.csv", mode = "wb")
+```
+
+On lit le fichier. 
+```{r}
+deputes <- read_csv("dat/deputes.csv")
+deputes
+```
+
+## Le loup
+
+Où est le loup? On télécharge la carte de présence du loup en France en 2019 depuis le site officiel <http://carmen.carmencarto.fr/38/Loup.map>.
+
+```{r}
+loup <- st_read("dat/loup_2019_maille_L93.shp")
+```
+
+On jette un coup d'oeil.
+```{r}
+glimpse(loup)
+```
+
+En détail.
+```{r}
+loup
+```
+
+On a aussi besoin d'une carte de France.
+```{r}
+france <- st_read('dat/departements.shp') %>%
+  clean_names() %>%
+  transmute(num_departement = d_p_artem,
+            nom_departement = str_to_lower(d_p_art_1),
+            num_region = r_g_ion,
+            nom_region = str_to_lower(nom_r_g_i))
+```
+
+Combien de carrés où le loup est présent?
+```{r}
+loup %>% 
+  as_tibble() %>%
+  group_by(ANNEE, PRESENCE) %>%
+  summarise(count = n())
+```
+
+On représente la présence du loup en 2019 sur une carte.
+```{r}
+loup %>%
+    ggplot() +
+    geom_sf(data = france, 
+            colour = "black", 
+            fill = "white", 
+            lwd = 0.2) + 
+    geom_sf(aes(fill = PRESENCE), lwd = 0) + 
+    scale_fill_manual(values = c('steelblue1','steelblue4'),
+                      name = "Présence",
+                      labels = c("Occasionnelle", "Régulière"))
+```
+
+## Quels sont les départements où le loup est présent?
+
+Quels sont les départements où le loup est présent?
+```{r}
+pres_par_dptmt <- st_contains(france, loup) 
+ou_loup <- sapply(pres_par_dptmt, length) > 0
+num_dptment_loup <- france$num_departement[ou_loup]
+nom_dptment_loup <- france$nom_departement[ou_loup]
+
+loup %>%
+    ggplot() +
+    geom_sf(data = france[ou_loup,], 
+            colour = "black", 
+            fill = "white", 
+            lwd = 0.2) + 
+    geom_sf(aes(fill = PRESENCE), lwd = 0) + 
+    scale_fill_manual(values = c('steelblue1','steelblue4'),
+                      name = "Présence",
+                      labels = c("Occasionnelle", "Régulière"))
+```
+
+## Députés, départements et loups
+
+Quels sont les députés dont les départements ont vu la présence du loup en 2019 (régulière ou occasionnelle) ?
+```{r}
+deputes_loup <- deputes %>%
+  filter(num_deptmt %in% num_dptment_loup)
+deputes_loup
+```
+
+On met les députés dans un fichier, et les députées dans un autre. 
+```{r}
+deputes_loup %>%
+  filter(sexe == "H") %>%
+  select(nom, emails) %>%
+  separate(emails, c("email1", "email2"), sep = "([|])") %>%
+  write_csv(file = "dat/deputes_loups.csv")
+
+deputes_loup %>%
+  filter(sexe == "F") %>%
+  select(nom, emails) %>%
+  separate(emails, c("email1", "email2"), sep = "([|])") %>%
+  write_csv(file = "dat/deputees_loups.csv")
+```
+
+## Courriel 
+
+On a approx 80 députées et 100 députés dont le département est concerné par le loup. Pour faire un envoi groupé, j'ai créé un groupe pour les députés et un autre pour les députées dans le petit logiciel `Contacts` (je suis sous Mac), puis j'ai envoyé un message à M. le Député, et un autre à Mme la Députée avec l'application mail `Spark` que j'adore. 
+
+Voici le message :
+
+La réduction des dommages causés par le loup sur les troupeaux domestiques est une priorité du [plan national d'actions 2018-2023 sur le loup et les activités d'élevage](https://www.ecologie.gouv.fr/sites/default/files/PNA_Loup-et-activites-elevage_2018-2023.pdf). L'Etat autorise un [contrôle létal au travers de prélèvements dérogatoires](https://hal.archives-ouvertes.fr/hal-02992939/document) indexés sur le nombre de loups. Alors que le nombre de loups fait débat, il m'a semblé important d'informer sur la manière dont les loups sont comptés en France.
+
+Dans une note d'information (ou "policy brief") que je souhaite partager avec vous, je reviens sur la méthode scientifique utilisée, fruit de 15 ans de collaborations entre le Centre National de la Recherche Scientifique (CNRS) et l'Office Français de la Biodiversité (OFB). Le loup étant présent dans votre département (selon les données 2019 de l'OFB), ces informations vous seront peut-être utiles.
+
+La note au format PDF est téléchargeable ici <https://bit.ly/3qMGYB5>, et se trouve également en ligne là <https://bit.ly/3Cqq7Gv>.
+
+Cordialement,
+Olivier Gimenez, directeur de recherche au CNRS.

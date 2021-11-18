@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
 ## Motivation
 
-Il y a un débat sur le nombre de loups en France. Pour informer, j'ai rédigé une note (ou "policy brief") sur la méthode de comptage de loups. Je me suis dit pourquoi pas envoyer ces informations aux député.e.s concerné.e.s par le loup. J'entends par là les départements où le loup est présent. Pour ce faire, j'ai besoin d'une liste de noms des député.e.s avec leur emails, seulement pour les départements où le loup est présent. 
+Il y a un débat sur le nombre de loups en France. Pour contribuer à informer, j'ai rédigé une note (ou "policy brief") sur la méthode de comptage de loups. Je me suis dit pourquoi pas envoyer ces informations aux député.e.s concerné.e.s par le loup. J'entends par là les départements où le loup est présent. Pour ce faire, j'ai besoin d'une liste de noms des député.e.s avec leur emails, seulement pour les départements où le loup est présent. 
 
 ## Pré-requis
 
